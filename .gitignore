@@ -1,0 +1,28 @@
+# Node.js
+node_modules/
+
+# Logs
+logs
+*.log
+
+# Dependency directories
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Testing
+coverage
+
+# Environment variables
+.env
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+
+# Build output
+dist/
+build/
+out/
