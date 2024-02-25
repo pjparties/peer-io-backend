@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import {createServer} from "http";
+import { Server } from "socket.io";
 
 const app = express();
 app.use(
@@ -21,8 +23,24 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 }
 );
+
+// socket.io
+const httpServer = createServer(app);
+const io = new Server(httpServer);
+
+io.on("connection", (socket) => {
+  console.log("a user connected");
+  socket.on("message", (msg) => {
+    console.log("message: " + msg);
+  });
+  socket.on("disconnect", () => {
+    console.log("user disconnected");
+  });
+});
+
+
 // define routes
 // import
 // app.use("/api/v1/<address>", <router>);
 
-export default app;
+export default httpServer;
