@@ -27,32 +27,70 @@ app.get("/", (req, res) => {
 const httpServer = createServer(app);
 const io = new Server(httpServer);
 
-io.on("connection", (socket) => {
-  // user connected
-  const id = socket.handshake.query.id;
-  socket.join(id);
-  console.log("a user connected", id);
+io.sockets.on("connection", (socket) => {
+  function log() {
+    var array = ["Message from server:"];
+    array.push.apply(array, arguments);
+    socket.emit("log", array);
+  }
 
-
-  // send message
-  socket.on("send-message", ({ user2, msg }) => {
-    socket.broadcast.to(user2).emit("receive-message", {
-      msg,
-      user1: id,
-      sender: user2,
-    });
+  //Defining Socket Connections
+  socket.on("message", (message, room) => {
+    log("Client said: ", message);
+    // for a real app, would be room-only (not broadcast)
+    socket.in(room).emit("message", message, room);
   });
 
-  // typing
-  socket.on("typing", ({ user2 }) => {
-    socket.broadcast.to(user2).emit("typing", {
-      user1: id,
-    });
+  socket.on("create or join", (room, clientName) => {
+    log("Received request to create or join room " + room);
+    var clientsInRoom = io.sockets.adapter.rooms.get(room);
+    var numClients = clientsInRoom ? clientsInRoom.size : 0;
+    log("Room " + room + " now has " + numClients + " client(s)");
+
+    if (numClients === 0) {
+      socket.join(room);
+      log("Client ID " + socket.id + " created room " + room);
+      socket.emit("created", room, socket.id);
+    } else if (numClients === 1) {
+      log("Client ID " + socket.id + " joined room " + room);
+      //this message ("join") will be received only by the first client since the client has not joined the room yet
+      io.sockets.in(room).emit("join", room, clientName); //this client name is the name of the second client who wants to join
+      socket.join(room);
+      //this mesage will be received by the second client
+      socket.emit("joined", room, socket.id);
+      //this message will be received by two cleints after the join of the second client
+      io.sockets.in(room).emit("ready");
+    } else {
+      // max two clients
+      socket.emit("full", room);
+    }
   });
 
-  // user disconnected
+  socket.on("creatorname", (room, client) => {
+    // to all clients in room1 except the sender
+    socket.to(room).emit("mynameis", client);
+  });
+
+  socket.on("ipaddr", () => {
+    var ifaces = os.networkInterfaces();
+    for (var dev in ifaces) {
+      ifaces[dev].forEach(function (details) {
+        if (details.family === "IPv4" && details.address !== "127.0.0.1") {
+          socket.emit("ipaddr", details.address);
+        }
+      });
+    }
+  });
+
+  socket.on("bye", () => {
+    console.log("received bye");
+  });
+
+  socket.on("disconnecting", () => {
+    console.log(socket.rooms); // the Set contains at least the socket ID
+  });
   socket.on("disconnect", () => {
-    console.log("user disconnected");
+    // socket.rooms.size === 0
   });
 });
 
