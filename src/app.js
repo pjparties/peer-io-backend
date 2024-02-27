@@ -3,6 +3,9 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import dotenv from "dotenv";
+dotenv.config({ path: ".env" });
+
 
 const app = express();
 app.use(
@@ -25,9 +28,15 @@ app.get("/", (req, res) => {
 
 // socket.io
 const httpServer = createServer(app);
-const io = new Server(httpServer);
+const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.CORS_ORIGIN,
+    methods: ["GET", "POST"],
+  },
+});
 
 io.sockets.on("connection", (socket) => {
+  console.log("connection made");
   function log() {
     var array = ["Message from server:"];
     array.push.apply(array, arguments);
@@ -41,8 +50,8 @@ io.sockets.on("connection", (socket) => {
     socket.in(room).emit("message", message, room);
   });
 
-  socket.on("create or join", (room, clientName) => {
-    log("Received request to create or join room " + room);
+  socket.on("create or join", ({room, clientName},callback) => {
+    console.log("Received request to create or join room " + room);
     var clientsInRoom = io.sockets.adapter.rooms.get(room);
     var numClients = clientsInRoom ? clientsInRoom.size : 0;
     log("Room " + room + " now has " + numClients + " client(s)");
@@ -90,6 +99,7 @@ io.sockets.on("connection", (socket) => {
     console.log(socket.rooms); // the Set contains at least the socket ID
   });
   socket.on("disconnect", () => {
+    socket.off();
     // socket.rooms.size === 0
   });
 });
