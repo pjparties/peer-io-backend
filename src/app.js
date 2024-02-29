@@ -35,11 +35,18 @@ const io = new Server(httpServer, {
   },
 });
 
+// TODO: Get requst to get the number of active users
+function getActiveUsers() {
+  const count2 = io.of("/").sockets.size;
+  return count2;
+}
+
+
 io.sockets.on("connection", (socket) => {
   console.log("connection made");
   function log() {
     var array = ["Message from server:"];
-    array.push.apply(array, arguments);
+    array.push.apply(array, arguments); 
     socket.emit("log", array);
   }
 
