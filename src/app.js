@@ -6,7 +6,6 @@ import { Server } from "socket.io";
 import dotenv from "dotenv";
 dotenv.config({ path: ".env" });
 
-
 const app = express();
 app.use(
   cors({
@@ -26,93 +25,38 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
+// // if found matching with other user pref. then send room code
+// app.get("/api/inwaitingroom/:userid", (req, res) => {
+//   res.send("In waiting room");
+//   // res.send(roomCode);
+// }
+// );
+
+
 // socket.io
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CORS_ORIGIN,
+    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
     methods: ["GET", "POST"],
   },
 });
 
-// TODO: Get requst to get the number of active users
-function getActiveUsers() {
-  const count2 = io.of("/").sockets.size;
-  return count2;
-}
-
-
-io.sockets.on("connection", (socket) => {
-  console.log("connection made");
-  function log() {
-    var array = ["Message from server:"];
-    array.push.apply(array, arguments); 
-    socket.emit("log", array);
-  }
-
-  //Defining Socket Connections
-  socket.on("message", (message, room) => {
-    log("Client said: ", message);
-    // for a real app, would be room-only (not broadcast)
-    socket.in(room).emit("message", message, room);
+io.on("connection", (socket) => {
+  console.log("a user connected", socket.id);
+  socket.on("join-room", ({roomId,userId}) => {
+    socket.join(roomId);
+    socket.to(roomId).emit("user-connected", userId);
   });
-
-  socket.on("create or join", ({room, clientName},callback) => {
-    console.log("Received request to create or join room " + room);
-    var clientsInRoom = io.sockets.adapter.rooms.get(room);
-    var numClients = clientsInRoom ? clientsInRoom.size : 0;
-    log("Room " + room + " now has " + numClients + " client(s)");
-
-    if (numClients === 0) {
-      socket.join(room);
-      log("Client ID " + socket.id + " created room " + room);
-      socket.emit("created", room, socket.id);
-    } else if (numClients === 1) {
-      log("Client ID " + socket.id + " joined room " + room);
-      //this message ("join") will be received only by the first client since the client has not joined the room yet
-      io.sockets.in(room).emit("join", room, clientName); //this client name is the name of the second client who wants to join
-      socket.join(room);
-      //this mesage will be received by the second client
-      socket.emit("joined", room, socket.id);
-      //this message will be received by two cleints after the join of the second client
-      io.sockets.in(room).emit("ready");
-    } else {
-      // max two clients
-      socket.emit("full", room);
-    }
-  });
-
-  socket.on("creatorname", (room, client) => {
-    // to all clients in room1 except the sender
-    socket.to(room).emit("mynameis", client);
-  });
-
-  socket.on("ipaddr", () => {
-    var ifaces = os.networkInterfaces();
-    for (var dev in ifaces) {
-      ifaces[dev].forEach(function (details) {
-        if (details.family === "IPv4" && details.address !== "127.0.0.1") {
-          socket.emit("ipaddr", details.address);
-        }
-      });
-    }
-  });
-
-  socket.on("bye", () => {
-    console.log("received bye");
-  });
-
-  socket.on("disconnecting", () => {
-    console.log(socket.rooms); // the Set contains at least the socket ID
-  });
+  socket.on("send-message",({roomId,msg})=>{
+    console.log("message received",msg, "at room",roomId);
+    socket.to(roomId).emit("receive-message",msg);
+  })
   socket.on("disconnect", () => {
-    socket.off();
-    // socket.rooms.size === 0
+    console.log("user disconnected", socket.id);
+    socket.to(roomId).emit("user-disconnected", userId);
+    socket.disconnect();
   });
 });
-
-// define routes
-// import
-// app.use("/api/v1/<address>", <router>);
 
 export default httpServer;
