@@ -32,7 +32,6 @@ app.get("/", (req, res) => {
 // }
 // );
 
-
 // socket.io
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -52,6 +51,11 @@ io.on("connection", (socket) => {
   socket.on("sendMessage", (roomCode, message) => {
     console.log(`Message sent in room ${roomCode}: ${message}`);
     socket.broadcast.to(roomCode).emit("receiveMessage", message);
+  });
+
+  socket.on("leaveRoom", (roomCode) => {
+    console.log(`User left room ${roomCode}`);
+    socket.leave(roomCode);
   });
 
   socket.on("disconnect", () => {
