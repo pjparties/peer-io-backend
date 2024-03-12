@@ -43,19 +43,19 @@ const io = new Server(httpServer, {
 });
 
 io.on("connection", (socket) => {
-  console.log("a user connected", socket.id);
-  socket.on("join-room", ({roomId,userId}) => {
-    socket.join(roomId);
-    socket.to(roomId).emit("user-connected", userId);
+  console.log("A user connected", socket.id);
+  socket.on("joinRoom", (roomCode) => {
+    socket.join(roomCode);
+    console.log(`User joined room ${roomCode}`);
   });
-  socket.on("send-message",({roomId,msg})=>{
-    console.log("message received",msg, "at room",roomId);
-    socket.to(roomId).emit("receive-message",msg);
-  })
+
+  socket.on("sendMessage", (roomCode, message) => {
+    console.log(`Message sent in room ${roomCode}: ${message}`);
+    socket.broadcast.to(roomCode).emit("receiveMessage", message);
+  });
+
   socket.on("disconnect", () => {
-    console.log("user disconnected", socket.id);
-    socket.to(roomId).emit("user-disconnected", userId);
-    socket.disconnect();
+    console.log("A user disconnected");
   });
 });
 
